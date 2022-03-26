@@ -18,7 +18,18 @@ class Model(nn.Module):
         self.decoder = Decoder(n_in_dec, n_hid_dec, graph_args_j, **kwargs)
         #self.linear = nn.Linear(n_hid_enc*3, n_hid_dec)
         self.linear = nn.Linear(n_hid_enc, n_hid_dec)
+
+        self.vae_mean = nn.Linear(n_hid_dec, 128)
+        self.vae_var = nn.Linear(n_hid_dec, 128)
+
+        self.vae_linear_o = nn.Linear(128, n_hid_dec)
+
         self.relu = nn.ReLU()
+
+    def reparameterization(self, mean, var):
+        epsilon = torch.randn_like(var)  # sampling epsilon
+        z = mean + var * epsilon  # reparameterization trick
+        return z
 
     def forward(self, enc_p, enc_v, enc_a, dec_curr, dec_prev, dec_prev2,
                 t, relrec_s1, relsend_s1, relrec_s2, relsend_s2, relrec_s3, relsend_s3, lamda_p=1):
@@ -27,6 +38,13 @@ class Model(nn.Module):
         #hidd_a = self.encoder_acl(enc_a, relrec_s1, relsend_s1, relrec_s2, relsend_s2, relrec_s3, relsend_s3, lamda_p)
         #hidden = self.linear(torch.cat((hidd_p, hidd_v, hidd_a), dim=1).permute(0,2,1)).permute(0,2,1)
         hidden = self.linear(hidd_p.permute(0,2,1)).permute(0,2,1)
+        """
+        mean = self.vae_mean(hidden.permute(0,2,1))
+        var =  self.vae_var(hidden.permute(0,2,1))
+        z = self.reparameterization(mean, var)
+        z_o = self.vae_linear_o(z).permute(0,2,1)
+        z_o_h = self.relu(z_o) # z_o_h
+        """
         hidden = self.relu(hidden)
         pred = self.decoder(dec_curr, dec_prev, dec_prev2, hidden, t)
         return pred
