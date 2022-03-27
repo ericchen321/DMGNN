@@ -38,15 +38,15 @@ class Model(nn.Module):
         #hidd_a = self.encoder_acl(enc_a, relrec_s1, relsend_s1, relrec_s2, relsend_s2, relrec_s3, relsend_s3, lamda_p)
         #hidden = self.linear(torch.cat((hidd_p, hidd_v, hidd_a), dim=1).permute(0,2,1)).permute(0,2,1)
         hidden = self.linear(hidd_p.permute(0,2,1)).permute(0,2,1)
-        """
+
         mean = self.vae_mean(hidden.permute(0,2,1))
         var =  self.vae_var(hidden.permute(0,2,1))
         z = self.reparameterization(mean, var)
         z_o = self.vae_linear_o(z).permute(0,2,1)
         z_o_h = self.relu(z_o) # z_o_h
-        """
-        hidden = self.relu(hidden)
-        pred = self.decoder(dec_curr, dec_prev, dec_prev2, hidden, t)
+
+        pred = self.decoder(dec_curr, dec_prev, dec_prev2, z_o_h, t)
+
         return pred
         
 
