@@ -86,6 +86,14 @@ class REC_Processor(Processor):
         loss = torch.mean(dist)
         return loss
 
+    def vae_loss_function(self, x, x_hat, mean, log_var):
+        # BCE_loss = nn.BCELoss()
+        # reproduction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction='sum')
+        assert x_hat.shape == x.shape
+        reconstruction_loss = torch.mean(torch.norm(x - x_hat, dim=len(x.shape) - 1))
+        KLD = - 0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
+        return reconstruction_loss + 0.1 * KLD
+
 
     def train(self):
         self.model.train()
@@ -114,7 +122,7 @@ class REC_Processor(Processor):
         N, T, D = targets.size()                                                        # N = 64(batchsize), T=10, D=63
         targets = targets.contiguous().view(N, T, -1, 3).permute(0, 2, 1, 3)          # [64, 21, 10, 3]
 
-        outputs = self.model(encoder_inputs_p,
+        outputs_combo = self.model(encoder_inputs_p,
                              encoder_inputs_v,
                              encoder_inputs_a,
                              decoder_inputs,
@@ -129,7 +137,12 @@ class REC_Processor(Processor):
                              self.relsend_body,
                              self.arg.lamda)
 
-        loss = self.loss_l1(outputs, targets)
+        outputs, mean, var = outputs_combo
+        loss_l1 = self.loss_l1(outputs, targets)
+        kl_loss = 0.0001*self.vae_loss_function(outputs, targets, mean, var)
+        loss =loss_l1+ kl_loss
+
+
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -137,6 +150,9 @@ class REC_Processor(Processor):
         self.optimizer.step()
 
         self.iter_info['loss'] = loss.data.item()
+        self.iter_info['kl_loss'] = kl_loss.data.item()
+        self.iter_info['loss_l1'] = loss_l1.data.item()
+
         self.show_iter_info()
         self.meta_info['iter'] += 1
 
@@ -199,7 +215,7 @@ class REC_Processor(Processor):
                 mean_errors = np.zeros((8, 25), dtype=np.float32)
                 for i in np.arange(8):
 
-                    output = outputs[i]                   # output: [V, t, d] = [21, 25, 3]
+                    output = outputs[0][i]                   # output: [V, t, d] = [21, 25, 3]
                     V, t, d = output.shape
                     output = output.permute(1,0,2).contiguous().view(t, V*d)
                     output_denorm = unnormalize_data(output.cpu().numpy(), self.data_mean, self.data_std, self.dim_ignore, self.dim_use, self.dim_zero)

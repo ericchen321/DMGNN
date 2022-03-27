@@ -47,7 +47,7 @@ class Model(nn.Module):
 
         pred = self.decoder(dec_curr, dec_prev, dec_prev2, z_o_h, t)
 
-        return pred
+        return (pred, mean, var)
         
 
 class Encoder(nn.Module):
