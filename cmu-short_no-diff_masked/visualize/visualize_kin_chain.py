@@ -138,21 +138,19 @@ if __name__ == '__main__':
     #         (4, 8), (4, 5), (5, 6), (6, 7)
     #     ]
     # }
+    bones = []
+    for i in range(cmu_parents.shape[0]):
+        if cmu_parents[i] != -1:
+            bones.append((i, cmu_parents[i]))
+    neighbor_link_partition = {
+        "all": bones
+    }
     # neighbor_link_partition = {
     #     "all": [
-    #         (1, 0), (2, 1), (3, 2), (4, 3), (5, 4), (6, 5), (7, 0), (8, 7), (9, 8), (10, 9),
-    #         (11, 10), (12, 11), (13, 0), (14, 13), (15, 14), (16, 15), (17, 16), (18, 17),
-    #         (19, 18), (20, 15), (21, 20), (22, 21), (23, 22), (24, 23), (25, 24), (26, 25),
-    #         (27, 23), (28, 27), (29, 15), (30, 29), (31, 30), (32, 31), (33, 32), (34, 33),
-    #         (35, 34), (36, 32), (37, 36)
+    #         (23, 22), (22, 21), (21, 17), (21, 2), (2, 3), (3, 4), (4, 5), (2, 8),
+    #         (8, 30), (8, 9), (9, 10), (10, 11), (17, 30), (30, 31), (31, 37)
     #     ],
     # }
-    neighbor_link_partition = {
-        "all": [
-            (23, 22), (22, 21), (21, 17), (21, 2), (2, 3), (3, 4), (4, 5), (2, 8),
-            (8, 30), (8, 9), (9, 10), (10, 11), (17, 30), (30, 31), (31, 37)
-        ],
-    }
 
     # define bone length for visualization
     bone_length = 2.0
@@ -161,7 +159,7 @@ if __name__ == '__main__':
     # the world frame
     encoder_inputs_4d = np.load(
         "/home/eric/eece571f/DMGNN/cmu-short_no-diff_masked/visualize/encoder_inputs_38_joints_walking.npy",
-    )
+    )[:, :, 1:, :]
     encoder_inputs_cartesian = compute_joint_pos(
         encoder_inputs_4d,
         cmu_parents,
@@ -177,9 +175,9 @@ if __name__ == '__main__':
         #print(encoder_inputs_sample_x_time_t.shape)
         #plot joints
         ax.scatter(
-            encoder_inputs_sample_x_time_t[:, 0],
+            encoder_inputs_sample_x_time_t[:, 2],
             encoder_inputs_sample_x_time_t[:, 1],
-            encoder_inputs_sample_x_time_t[:, 2])
+            encoder_inputs_sample_x_time_t[:, 0])
         #plot bones
         # for part_name, part_links in neighbor_link_partition.items():
         #     if part_name == "left_arm" or part_name == "right_arm":
@@ -202,19 +200,19 @@ if __name__ == '__main__':
         #             linewidth = link_width)
         for part_name, part_links in neighbor_link_partition.items():
             for bone in part_links:
-                ax.plot(encoder_inputs_sample_x_time_t[bone, 0],
+                ax.plot(encoder_inputs_sample_x_time_t[bone, 2],
                     encoder_inputs_sample_x_time_t[bone, 1],
-                    encoder_inputs_sample_x_time_t[bone, 2],
+                    encoder_inputs_sample_x_time_t[bone, 0],
                     color = "red",
                     linewidth = 2)
         #label joints
         for joint_index in range(encoder_inputs_sample_x_time_t.shape[0]):
-            ax.text(encoder_inputs_sample_x_time_t[joint_index, 0],
+            ax.text(encoder_inputs_sample_x_time_t[joint_index, 2],
                 encoder_inputs_sample_x_time_t[joint_index, 1],
-                encoder_inputs_sample_x_time_t[joint_index, 2],
+                encoder_inputs_sample_x_time_t[joint_index, 0],
                 f"{joint_index}",
                 fontsize = 12,
                 color="blue")
-        plt.savefig(f"skeletons_38_joints_walking/skeleton_<{time_id}>.png")
+        plt.savefig(f"skeletons_38_joints_walking_my_kc/skeleton_<{time_id}>.png")
         plt.close(fig)
     print(f"plotted {encoder_inputs_cartesian.shape[1]} skeletons")
