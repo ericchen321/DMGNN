@@ -138,9 +138,9 @@ class REC_Processor(Processor):
                              self.arg.lamda)
 
         outputs, mean, var = outputs_combo
-        loss_l1 = self.loss_l1(outputs, targets)
-        kl_loss = 0.0001*self.vae_loss_function(outputs, targets, mean, var)
-        loss =loss_l1+ kl_loss
+        # loss_l1 = self.loss_l1(outputs, targets)
+        kl_loss = self.vae_loss_function(outputs, targets, mean, var)
+        loss = kl_loss
 
 
 
