@@ -123,7 +123,7 @@ class REC_Processor(Processor):
         loss_value = []
         normed_train_dict = normalize_data(self.train_dict, self.data_mean, self.data_std, self.dim_use)
 
-        encoder_inputs, decoder_inputs, targets = train_sample(normed_train_dict, 
+        encoder_inputs, decoder_inputs, targets = train_sample(self.train_dict, 
                                                                self.arg.batch_size, 
                                                                self.arg.source_seq_len, 
                                                                self.arg.target_seq_len, 

@@ -61,12 +61,14 @@ def normalization_stats(complete_data):
     data_std[dimensions_is_zero] = 1.0
     
 
-    dim_to_ignore = [0,  1,  2,  3,  4,  5,  6,   7,   8,   21,  22,  23,  24,  25,  26, 
-                     39, 40, 41, 60, 61, 62, 63,  64,  65,  81,  82,  83,
-                     87, 88, 89, 90, 91, 92, 108, 109, 110, 114, 115, 116]
-    dim_to_use = [9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 27, 28, 29, 30, 31,  32,  33,  34,  35,  36,  37,  38, 
-                  42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58,  59,  66,  67,  68,  69,  70,  71,  72,  73,  74, 
-                  75, 76, 77, 78, 79, 80, 84, 85, 86, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 111, 112, 113]
+    # dim_to_ignore = [0,  1,  2,  3,  4,  5,  6,   7,   8,   21,  22,  23,  24,  25,  26, 
+    #                  39, 40, 41, 60, 61, 62, 63,  64,  65,  81,  82,  83,
+    #                  87, 88, 89, 90, 91, 92, 108, 109, 110, 114, 115, 116]
+    # dim_to_use = [9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 27, 28, 29, 30, 31,  32,  33,  34,  35,  36,  37,  38, 
+    #               42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58,  59,  66,  67,  68,  69,  70,  71,  72,  73,  74, 
+    #               75, 76, 77, 78, 79, 80, 84, 85, 86, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 111, 112, 113]
+    dim_to_ignore = []
+    dim_to_use = range(0, 117, 1)
     return data_mean, data_std, dim_to_ignore, dim_to_use, dimensions_is_zero, dimensions_nonzero
 
 
@@ -146,7 +148,7 @@ def train_sample(data_set, batch_size, source_seq_len, target_seq_len, input_siz
         3
     )
     np.save(
-        "/home/eric/eece571f/DMGNN/cmu-short_no-diff_masked/visualize/encoder_inputs.npy",
+        "/home/eric/eece571f/DMGNN/cmu-short_no-diff_masked/visualize/encoder_inputs_38_joints_walking.npy",
         encoder_inputs_4d)
     print(f"encoder inputs saved, shape: {encoder_inputs_4d.shape}")
     while True:
@@ -373,7 +375,7 @@ def revert_coordinate_space(channels, R0, T0):
     return channels_rec
 
 
-def fkl(angles, parent, offset, rotInd, expmapInd):
+def fkl(angles, parent, offset, posInd, expmapInd):
     # NOTE by Eric: this might be the code to do forward kinematics
     njoints   = 38
     xyzStruct = [dict() for x in range(njoints)]
@@ -388,6 +390,7 @@ def fkl(angles, parent, offset, rotInd, expmapInd):
                 zangle = angles[ posInd[i][0]-1 ]
         except:
             print (i)
+        #print(f"posInd[{i}]: {posInd[i]}")
 
         r = angles[ expmapInd[i] ]
         thisRotation = expmap2rotmat(r)
