@@ -67,7 +67,7 @@ class Encoder(nn.Module):
         self.s3_l4 = St_gcn(128, 256, ksize_3, stride=2, **kwargs)
         self.s2_back = PartLocalInform()
         self.s3_back = BodyLocalInform()
-        self.fusion_layer = fusion_layer
+        self.fusion_layer = 2# 0# fusion_layer
         self.cross_w = cross_w
 
         if self.fusion_layer == 0:
@@ -120,6 +120,7 @@ class Encoder(nn.Module):
             x_s1_1 = self.s1_l1(x_s1_0, self.A_j*self.emul_s1[0]+self.eadd_s1[0])
             x_s2_1 = self.s2_l1(x_s2_0, self.A_p*self.emul_s2[0]+self.eadd_s2[0])
             x_s3_1 = self.s3_l1(x_s3_0, self.A_b*self.emul_s3[0]+self.eadd_s3[0])
+            # torch.Size([32, 32, 49, 5])
 
             x_s1_2 = self.s1_l2(x_s1_1, self.A_j*self.emul_s1[1]+self.eadd_s1[1])
             x_s2_2 = self.s2_l2(x_s2_1, self.A_p*self.emul_s2[1]+self.eadd_s2[1])
@@ -196,8 +197,8 @@ class Encoder(nn.Module):
 
         x_s21 = self.s2_back(x_s2_4)
         x_s31 = self.s3_back(x_s3_4)
-        x_s1_5 = x_s1_4+lamda_p*x_s21+lamda_p*x_s31
-        x_out = torch.mean(self.s1_l5(x_s1_5, self.A_j*self.emul_s1[4]+self.eadd_s1[4]), dim=2)
+        x_s1_5 = x_s1_4+lamda_p*x_s21+lamda_p*x_s31 # 32,256,7,26
+        x_out = torch.mean(self.s1_l5(x_s1_5, self.A_j*self.emul_s1[4]+self.eadd_s1[4]), dim=2) # 32,256,26
 
         return x_out
 
