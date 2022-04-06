@@ -13,16 +13,16 @@ class Model(nn.Module):
         super().__init__()
 
         self.encoder_pos = Encoder(n_in_enc, graph_args_j, graph_args_p, graph_args_b, True, fusion_layer, cross_w, **kwargs)
-        self.encoder_vel = Encoder(n_in_enc, graph_args_j, graph_args_p, graph_args_b, True, fusion_layer, cross_w, **kwargs)
-        self.encoder_acl = Encoder(n_in_enc, graph_args_j, graph_args_p, graph_args_b, True, fusion_layer, cross_w, **kwargs)
+        # self.encoder_vel = Encoder(n_in_enc, graph_args_j, graph_args_p, graph_args_b, True, fusion_layer, cross_w, **kwargs)
+        # self.encoder_acl = Encoder(n_in_enc, graph_args_j, graph_args_p, graph_args_b, True, fusion_layer, cross_w, **kwargs)
         self.decoder = Decoder(n_in_dec, n_hid_dec, graph_args_j, **kwargs)
         #self.linear = nn.Linear(n_hid_enc*3, n_hid_dec)
         self.linear = nn.Linear(n_hid_enc, n_hid_dec)
 
-        self.vae_mean = nn.Linear(n_hid_dec, 128)
-        self.vae_var = nn.Linear(n_hid_dec, 128)
+        self.vae_mean = nn.Linear(n_hid_dec, 256) #256
+        self.vae_var = nn.Linear(n_hid_dec, 256) # 256
 
-        self.vae_linear_o = nn.Linear(128, n_hid_dec)
+        self.vae_linear_o = nn.Linear(256, n_hid_dec) # 256
 
         self.relu = nn.ReLU()
 
@@ -40,15 +40,23 @@ class Model(nn.Module):
         hidden = self.linear(hidd_p.permute(0,2,1)).permute(0,2,1)
 
         mean = self.vae_mean(hidden.permute(0,2,1))
-        var =  self.vae_var(hidden.permute(0,2,1))
-        z = self.reparameterization(mean, var)
+        log_var =  self.vae_var(hidden.permute(0,2,1))
+        z = self.reparameterization(mean, torch.exp(0.5 * log_var))
         z_o = self.vae_linear_o(z).permute(0,2,1)
         z_o_h = self.relu(z_o) # z_o_h
 
         pred = self.decoder(dec_curr, dec_prev, dec_prev2, z_o_h, t)
 
-        return (pred, mean, var)
+        return (pred, mean, log_var)
         
+    def generate_from_decoder(self, z, \
+                              dec_curr, t):
+        z_o = self.vae_linear_o(z).permute(0,2,1)
+        z_o_h = self.relu(z_o) # z_o_h
+
+        pred = self.decoder(dec_curr, None, None, z_o_h, t)
+        return pred
+
 
 class Encoder(nn.Module):
 
@@ -222,6 +230,9 @@ class Encoder(nn.Module):
         return x_out
 
 
+
+
+
 class Decoder(nn.Module):
    
     def __init__(self, n_in_dec, n_hid_dec, graph_args_j, edge_weighting=True, dropout=0.3, **kwargs):
@@ -289,32 +300,32 @@ class Decoder(nn.Module):
 
         N, T, D = inputs.size()
         inputs = inputs.contiguous().view(N, T, self.V, -1)                        # [64, 1, 21, 3]
-        inputs_previous = inputs_previous.contiguous().view(N, T, self.V, -1)
-        inputs_previous2 = inputs_previous2.contiguous().view(N, T, self.V, -1)
+        # inputs_previous = inputs_previous.contiguous().view(N, T, self.V, -1)
+        # inputs_previous2 = inputs_previous2.contiguous().view(N, T, self.V, -1)
         self.mask = self.mask.view(self.V, 3)
 
         for step in range(0, t):
             # NOTE by Eric: t=1 by default (get_parser() in recognition.py)
             if step < 1:
                 ins_p = inputs[:, 0, :, :]                                         # ins_p: [64, 21, 3]
-                ins_v = (inputs_previous-inputs_previous2)[:, 0, :, :]                          # ins_v: [64, 21, 3]
-                ins_a = ins_p-inputs_previous[:, 0, :, :]-ins_v
-                ins_v_dec = (inputs-inputs_previous)[:, 0, :, :]
+                # ins_v = (inputs_previous-inputs_previous2)[:, 0, :, :]                          # ins_v: [64, 21, 3]
+                # ins_a = ins_p-inputs_previous[:, 0, :, :]-ins_v
+                # ins_v_dec = (inputs-inputs_previous)[:, 0, :, :]
             elif step==1:
                 ins_p = pred_all[step-1]                                           # ins_p: [64, 21, 3]
-                ins_v = (inputs-inputs_previous)[:, 0, :, :]                                   # ins_v: [64, 21, 3]
-                ins_a = ins_p-inputs[:, 0, :, :]-ins_v # ins_v-(inputs-inputs_previous)[:, 0, :, :]
-                ins_v_dec = pred_all[step-1]-inputs[:, 0, :, :]
+                # ins_v = (inputs-inputs_previous)[:, 0, :, :]                                   # ins_v: [64, 21, 3]
+                # ins_a = ins_p-inputs[:, 0, :, :]-ins_v # ins_v-(inputs-inputs_previous)[:, 0, :, :]
+                # ins_v_dec = pred_all[step-1]-inputs[:, 0, :, :]
             elif step==2:
                 ins_p = pred_all[step-1]
-                ins_v = pred_all[step-2]-inputs[:, 0, :, :]
-                ins_a = ins_p-pred_all[step-2]-ins_v # ins_v-(pred_all[step-2]-inputs[:, 0, :, :])
-                ins_v_dec = pred_all[step-1]-pred_all[step-2]
+                # ins_v = pred_all[step-2]-inputs[:, 0, :, :]
+                # ins_a = ins_p-pred_all[step-2]-ins_v # ins_v-(pred_all[step-2]-inputs[:, 0, :, :])
+                # ins_v_dec = pred_all[step-1]-pred_all[step-2]
             else:
                 ins_p = pred_all[step-1]
-                ins_v = pred_all[step-2]-pred_all[step-3]
-                ins_a = ins_p-pred_all[step-2]-ins_v # ins_v-(pred_all[step-2]-pred_all[step-3])
-                ins_v_dec = pred_all[step-1]-pred_all[step-2]
+                # ins_v = pred_all[step-2]-pred_all[step-3]
+                # ins_a = ins_p-pred_all[step-2]-ins_v # ins_v-(pred_all[step-2]-pred_all[step-3])
+                # ins_v_dec = pred_all[step-1]-pred_all[step-2]
             n = torch.randn(ins_p.size()).cuda()*0.0005
             #ins = torch.cat((ins_p+n, ins_v, ins_a), dim=-1)
             # NOTE: remove velocity and acceleration
@@ -328,3 +339,121 @@ class Decoder(nn.Module):
         preds = preds * self.mask
        
         return preds.transpose(1, 2).contiguous()      # [64, 21, t, 3]
+
+
+
+class Discriminator(nn.Module):
+
+    def __init__(self, n_in_enc, graph_args_j, graph_args_p, graph_args_b, edge_weighting, fusion_layer, cross_w,
+                 **kwargs):
+        super().__init__()
+
+        self.graph_j = Graph_J(**graph_args_j)
+        self.graph_p = Graph_P(**graph_args_p)
+        self.graph_b = Graph_B(**graph_args_b)
+        A_j = torch.tensor(self.graph_j.A_j, dtype=torch.float32, requires_grad=False)
+        self.register_buffer('A_j', A_j)
+        A_p = torch.tensor(self.graph_p.A_p, dtype=torch.float32, requires_grad=False)
+        self.register_buffer('A_p', A_p)
+        A_b = torch.tensor(self.graph_b.A_b, dtype=torch.float32, requires_grad=False)
+        self.register_buffer('A_b', A_b)
+
+        t_ksize, s_ksize_1, s_ksize_2, s_ksize_3 = 5, self.A_j.size(0), self.A_p.size(0), self.A_b.size(0)
+        ksize_1 = (t_ksize, s_ksize_1)
+        # ksize_2 = (t_ksize, s_ksize_2)
+        # ksize_3 = (t_ksize, s_ksize_3)
+
+        self.s2_init = AveargeJoint()
+        self.s3_init = AveargePart()
+        self.s1_l1 = St_gcn(n_in_enc, 32, ksize_1, stride=1, residual=False, **kwargs)
+        self.s1_l2 = St_gcn(32, 64, ksize_1, stride=2, **kwargs)
+        self.s1_l3 = St_gcn(64, 128, ksize_1, stride=2, **kwargs)
+        self.s1_l4 = St_gcn(128, 256, ksize_1, stride=2, **kwargs)
+        self.s1_l5 = St_gcn(256, 256, ksize_1, stride=1, **kwargs)
+        # use 1-level feature extractor for DiscriminatorTBD
+
+        # self.s2_l1 = St_gcn(n_in_enc, 32, ksize_2, stride=1, residual=False, **kwargs)
+        # self.s2_l2 = St_gcn(32, 64, ksize_2, stride=2, **kwargs)
+        # self.s2_l3 = St_gcn(64, 128, ksize_2, stride=2, **kwargs)
+        # self.s2_l4 = St_gcn(128, 256, ksize_2, stride=2, **kwargs)
+        # self.s3_l1 = St_gcn(n_in_enc, 32, ksize_3, stride=1, residual=False, **kwargs)
+        # self.s3_l2 = St_gcn(32, 64, ksize_3, stride=2, **kwargs)
+        # self.s3_l3 = St_gcn(64, 128, ksize_3, stride=2, **kwargs)
+        # self.s3_l3 = St_gcn(64, 128, ksize_3, stride=2, **kwargs)
+        # self.s3_l4 = St_gcn(128, 256, ksize_3, stride=2, **kwargs)
+        self.s2_back = PartLocalInform()
+        self.s3_back = BodyLocalInform()
+        self.fusion_layer = fusion_layer
+        self.cross_w = cross_w
+
+        if edge_weighting:
+            self.emul_s1 = nn.ParameterList([nn.Parameter(torch.ones(self.A_j.size())) for i in range(5)])
+            self.eadd_s1 = nn.ParameterList([nn.Parameter(torch.zeros(self.A_j.size())) for i in range(5)])
+            self.emul_s2 = nn.ParameterList([nn.Parameter(torch.ones(self.A_p.size())) for i in range(4)])
+            self.eadd_s2 = nn.ParameterList([nn.Parameter(torch.zeros(self.A_p.size())) for i in range(4)])
+            self.emul_s3 = nn.ParameterList([nn.Parameter(torch.ones(self.A_b.size())) for i in range(4)])
+            self.eadd_s3 = nn.ParameterList([nn.Parameter(torch.zeros(self.A_b.size())) for i in range(4)])
+        else:
+            self.emul_s1 = [1] * 0
+            self.eadd_s1 = nn.ParameterList([nn.Parameter(torch.zeros(self.A_j.size())) for i in range(5)])
+            self.emul_s2 = [1] * 4
+            self.eadd_s2 = nn.ParameterList([nn.Parameter(torch.zeros(self.A_p.size())) for i in range(4)])
+            self.emul_s3 = [1] * 4
+            self.eadd_s3 = nn.ParameterList([nn.Parameter(torch.zeros(self.A_b.size())) for i in range(4)])
+
+        self.post_layer = nn.Sequential(
+            nn.Linear(26, 1),
+            # nn.Sigmoid()
+        )
+        self.fcn = nn.Conv2d(256,1, kernel_size=1)
+        # self.fcn2 = nn.linear(26, 1)
+        # self.sigmoid =
+        # linear layer
+
+    def fuse_operation(self, x1, x2, x3, w):
+        x = x1 + w * (x2 + x3)
+        return x
+
+    def forward(self, x):
+        N, T, D = x.size()  # N = 64(batch-size), T = 49, D = 66
+        V = self.A_j.size()[1]  # V = 21
+        x = x.contiguous().view(N, T, V, -1)  # [N, T, V, d] = [64, 49, 21, 3]
+        x = x.permute(0, 3, 1, 2).contiguous()  # [N, d, T, V] = [64, 3, 49, 21]
+
+        x_s1_0, x_s2_0, x_s3_0 = x, self.s2_init(x), self.s3_init(x)
+
+        if self.fusion_layer == 0:
+            x_s1_1 = self.s1_l1(x_s1_0, self.A_j * self.emul_s1[0] + self.eadd_s1[0])
+            # x_s2_1 = self.s2_l1(x_s2_0, self.A_p * self.emul_s2[0] + self.eadd_s2[0])
+            # x_s3_1 = self.s3_l1(x_s3_0, self.A_b * self.emul_s3[0] + self.eadd_s3[0])
+
+            x_s1_2 = self.s1_l2(x_s1_1, self.A_j * self.emul_s1[1] + self.eadd_s1[1])
+            # x_s2_2 = self.s2_l2(x_s2_1, self.A_p * self.emul_s2[1] + self.eadd_s2[1])
+            # x_s3_2 = self.s3_l2(x_s3_1, self.A_b * self.emul_s3[1] + self.eadd_s3[1])
+
+            x_s1_3 = self.s1_l3(x_s1_2, self.A_j * self.emul_s1[2] + self.eadd_s1[2])
+            # x_s2_3 = self.s2_l3(x_s2_2, self.A_p * self.emul_s2[2] + self.eadd_s2[2])
+            # x_s3_3 = self.s3_l3(x_s3_2, self.A_b * self.emul_s3[2] + self.eadd_s3[2])
+
+            x_s1_4 = self.s1_l4(x_s1_3, self.A_j * self.emul_s1[3] + self.eadd_s1[3])
+            # x_s2_4 = self.s2_l4(x_s2_3, self.A_p * self.emul_s2[3] + self.eadd_s2[3])
+            # x_s3_4 = self.s3_l4(x_s3_3, self.A_b * self.emul_s3[3] + self.eadd_s3[3])
+
+
+        # x_s21 = self.s2_back(x_s2_4)
+        # x_s31 = self.s3_back(x_s3_4)
+        # x_s1_5 = x_s1_4 + lamda_p * x_s21 + lamda_p * x_s31
+        x_s1_5 = x_s1_4
+        # x_out = torch.mean(self.s1_l5(x_s1_5, self.A_j * self.emul_s1[4] + self.eadd_s1[4]), dim=2)
+        x_out = self.s1_l5(x_s1_5, self.A_j * self.emul_s1[4] + self.eadd_s1[4])
+        _,c,t,v = x_out.size()
+        # feature = x_out.view(N, 1, c, t, v).permute(0, 2, 3, 4, 1)
+
+        # prediction
+        x_out = self.fcn(x_out)
+        output = x_out.view(N, 1, -1, t, v).permute(0, 2, 3, 4, 1)
+
+        output = torch.mean(output, dim=2) #TBD ############# bad use spectralnorm or use leakyReLU
+        output = output.view(N,-1)
+        output = self.post_layer(output)
+        return output
