@@ -130,3 +130,7 @@ dmypy.json
 
 # the entire training/testing workspace
 work_dir/
+
+# skeleton visualizations
+skeletons_*/
+motion_*/

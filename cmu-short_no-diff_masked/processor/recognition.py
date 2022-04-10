@@ -256,6 +256,9 @@ class REC_Processor(Processor):
             encoder_inputs_p = torch.Tensor(encoder_inputs).float().to(self.dev)                         # [N,T,D] = [64, 49, 63]
             encoder_inputs_v = torch.Tensor(encoder_inputs_v).float().to(self.dev)                       # [N,T,D] = [64, 49, 63]
             encoder_inputs_a = torch.Tensor(encoder_inputs_a).float().to(self.dev)
+            # for saving motion
+            N, T, D = encoder_inputs_p.shape
+            encoder_inputs_p_4d = encoder_inputs_p.view(N, T, -1, 3).permute(0, 2, 1, 3)                 # Eric: [N, V, T, 3]  same with targets for saving motion
 
             decoder_inputs = torch.Tensor(decoder_inputs).float().to(self.dev)                           # [N,T,D] = [64,  1, 63]
             #decoder_inputs_previous = torch.Tensor(encoder_inputs[:, -1, :]).unsqueeze(1).to(self.dev)
@@ -284,13 +287,40 @@ class REC_Processor(Processor):
                                      self.arg.lamda)
 
             if evaluation:
-                mean_errors = np.zeros((8, 25), dtype=np.float32)
-                for i in np.arange(8):
-
+                num_samples_per_action = encoder_inputs_p_4d.shape[0]
+                mean_errors = np.zeros(
+                    (num_samples_per_action, self.arg.target_seq_len), dtype=np.float32)
+                # Eric: create data structs to save unnormalized inputs, outputs and targets
+                inputs_denorm = np.zeros(
+                    [num_samples_per_action,
+                    encoder_inputs_p_4d.shape[2],
+                    int(self.data_mean.shape[0]/3),
+                    3]) # num_samples_per_action, t_in, 39, 3
+                outputs_denorm = np.zeros(
+                    [num_samples_per_action,
+                    outputs.shape[2],
+                    int(self.data_mean.shape[0]/3),
+                    3]) # [num_samples_per_action, t_out, 39, 3]
+                targets_denorm = np.zeros(
+                    [num_samples_per_action,
+                    targets.shape[2],
+                    int(self.data_mean.shape[0]/3),
+                    3]) # [num_samples_per_action, t_out, V, 3]
+                
+                for i in np.arange(num_samples_per_action):
+                    input = encoder_inputs_p_4d[i] # V, t_in, d
+                    V, t, d = input.shape
+                    input = input.permute(1,0,2).contiguous().view(t, V*d)
+                    input_denorm = unnormalize_data(
+                        input.cpu().numpy(), self.data_mean, self.data_std, self.dim_ignore, self.dim_use, self.dim_zero)
+                    inputs_denorm[i] = input_denorm.reshape((t, -1, 3))
+                    
                     output = outputs[i]                   # output: [V, t, d] = [21, 25, 3]
                     V, t, d = output.shape
                     output = output.permute(1,0,2).contiguous().view(t, V*d)
-                    output_denorm = unnormalize_data(output.cpu().numpy(), self.data_mean, self.data_std, self.dim_ignore, self.dim_use, self.dim_zero)
+                    output_denorm = unnormalize_data(
+                        output.cpu().numpy(), self.data_mean, self.data_std, self.dim_ignore, self.dim_use, self.dim_zero)
+                    outputs_denorm[i] = output_denorm.reshape((t, -1, 3))
                     t, D = output_denorm.shape
                     output_euler = np.zeros((t,D) , dtype=np.float32)        # [21, 99]
                     for j in np.arange(t):
@@ -299,7 +329,9 @@ class REC_Processor(Processor):
 
                     target = targets[i]
                     target = target.permute(1,0,2).contiguous().view(t, V*d)
-                    target_denorm = unnormalize_data(target.cpu().numpy(), self.data_mean, self.data_std, self.dim_ignore, self.dim_use, self.dim_zero)
+                    target_denorm = unnormalize_data(
+                        target.cpu().numpy(), self.data_mean, self.data_std, self.dim_ignore, self.dim_use, self.dim_zero)
+                    targets_denorm[i] = target_denorm.reshape((t, -1, 3))
                     target_euler = np.zeros((t,D) , dtype=np.float32)
                     for j in np.arange(t):
                         for k in np.arange(0,115,3):
@@ -319,7 +351,12 @@ class REC_Processor(Processor):
                     save_dir = os.path.join(self.save_dir,'motions_exp'+str(iter_time*self.arg.savemotion_interval))
                     if not os.path.exists(save_dir):
                         os.makedirs(save_dir)
-                    np.save(save_dir+'/motions_'+action+'.npy', outputs.cpu().numpy())
+                    # save unnormalized inputs
+                    np.save(save_dir+f"/motions_{action}_inputs.npy", inputs_denorm)
+                    # save unnormalized outputs
+                    np.save(save_dir+f"/motions_{action}_outputs.npy", outputs_denorm)
+                    # save unnormalized targets
+                    np.save(save_dir+f"/motions_{action}_targets.npy", targets_denorm)
 
                 print_str = "{0: <16} |".format(action)
                 for ms_idx, ms in enumerate([0,1,2,3,4,5,6,7,8,9,13,24]):

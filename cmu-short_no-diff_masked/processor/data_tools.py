@@ -100,42 +100,6 @@ def train_sample(data_set, batch_size, source_seq_len, target_seq_len, input_siz
         decoder_inputs[i,:,:]  = data_sel[source_seq_len-1:source_seq_len,:]
         decoder_outputs[i,:,:] = data_sel[source_seq_len:,:]
 
-    # #visualize joints
-    # import matplotlib.pyplot as plt
-
-    # for time_id in range(encoder_inputs.shape[1]):
-    #     fig = plt.figure(figsize=(12, 12))
-    #     ax = fig.add_subplot(projection='3d')
-    #     neighbor_link_ = [(1,2),(2,3),(3,4),(5,6),(6,7),(7,8),(1,9),(5,9),
-    #                         (9,10),(10,11),(11,12),(12,13),(13,14),
-    #                         (11,15),(15,16),(16,17),(17,18),(18,19),(17,20),
-    #                         (12,21),(21,22),(22,23),(23,24),(24,25),(23,26)]
-    #     neighbor_link = [(i-1,j-1) for (i,j) in neighbor_link_]
-    #     encoder_inputs_sample_x_time_t = encoder_inputs[4, time_id, :].reshape(-1, 3) # J, 3
-    #     #print(encoder_inputs_sample_x_time_t.shape)
-    #     #plot joints
-    #     ax.scatter(
-    #         encoder_inputs_sample_x_time_t[:, 0],
-    #         encoder_inputs_sample_x_time_t[:, 1],
-    #         encoder_inputs_sample_x_time_t[:, 2])
-    #     #plot bones
-    #     for bone in neighbor_link:
-    #         ax.plot(encoder_inputs_sample_x_time_t[bone, 0],
-    #             encoder_inputs_sample_x_time_t[bone, 1],
-    #             encoder_inputs_sample_x_time_t[bone, 2],
-    #             'ro-')
-    #     #label joints
-    #     for joint_index in range(encoder_inputs_sample_x_time_t.shape[0]):
-    #         ax.text(encoder_inputs_sample_x_time_t[joint_index, 0],
-    #             encoder_inputs_sample_x_time_t[joint_index, 1],
-    #             encoder_inputs_sample_x_time_t[joint_index, 2],
-    #             f"{joint_index}",
-    #             color="blue")
-    #     plt.savefig(f"skeletons/skeleton_<{time_id}>.png")
-    #     plt.close(fig)
-    # print(f"plotted {encoder_inputs.shape[1]} skeletons")
-    # while True:
-    #     continue
     return encoder_inputs, decoder_inputs, decoder_outputs
 
 
@@ -358,7 +322,7 @@ def revert_coordinate_space(channels, R0, T0):
     return channels_rec
 
 
-def fkl(angles, parent, offset, rotInd, expmapInd):
+def fkl(angles, parent, offset, posInd, expmapInd):
     # NOTE by Eric: this might be the code to do forward kinematics
     njoints   = 38
     xyzStruct = [dict() for x in range(njoints)]

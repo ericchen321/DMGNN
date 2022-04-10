@@ -107,7 +107,7 @@ class Processor(IO):
                     else:
                         save_motion = False
                     self.io.print_log('eval Iteration: {}'.format(itr+1))
-                    self.test(iter_time=itr//self.arg.eval_interval, save_motion=save_motion)
+                    self.test(iter_time=itr//self.arg.eval_interval, save_motion=self.arg.save_motion)
             self.MAE = self.MAE_tensor.min(axis=0)
             self.MAE[:,-1] = self.MAE.mean(axis=-1)*13/10.
 
@@ -134,7 +134,7 @@ class Processor(IO):
             self.io.print_log('Model:   {}.'.format(self.arg.model))
             self.io.print_log('Weights: {}.'.format(self.arg.weights))
             self.io.print_log('Evaluation Start:')
-            self.test(phase=True)
+            self.test(phase=True, save_motion=self.arg.save_motion)
 
 
     @staticmethod
@@ -160,6 +160,7 @@ class Processor(IO):
         parser.add_argument('--save_log', type=str2bool, default=True, help='save logging or not')
         parser.add_argument('--print_log', type=str2bool, default=True, help='print logging or not')
         parser.add_argument('--pavi_log', type=str2bool, default=False, help='logging on pavi or not')
+        parser.add_argument('--save_motion', type=str2bool, default=False, help='save motion to npy files or not')
 
         # data loading
         parser.add_argument('--actions', default='all', help='data loader will be used')

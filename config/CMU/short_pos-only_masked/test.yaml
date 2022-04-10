@@ -31,6 +31,7 @@ lamda: 0.6
 phase: test
 device: [0]
 use_gpu: True
+save_motion: True
 
 fusion_layer_dir: test
 learning_rate_dir: test
