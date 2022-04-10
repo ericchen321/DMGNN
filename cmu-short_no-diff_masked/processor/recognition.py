@@ -50,7 +50,7 @@ class REC_Processor(Processor):
         self.relsend_part = torch.FloatTensor(np.array(encode_onehot(np.where(off_diag_part)[0]), dtype=np.float32)).to(self.dev)
         self.relrec_body = torch.FloatTensor(np.array(encode_onehot(np.where(off_diag_body)[1]), dtype=np.float32)).to(self.dev)
         self.relsend_body = torch.FloatTensor(np.array(encode_onehot(np.where(off_diag_body)[0]), dtype=np.float32)).to(self.dev)
-        self.lower_body_joints = [0, 1, 2, 3, 4, 5, 6, 7]
+        self.lower_body_joints = [1, 2, 3]
         
     def load_optimizer(self):
         if self.arg.optimizer == 'SGD':
