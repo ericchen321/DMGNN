@@ -163,8 +163,8 @@ class REC_Processor(Processor):
             decoder_inputs
         )
 
-        decoder_noise = self.build_masking_matrix_add_noise(decoder_inputs, self.lower_body_joints)
-        encoder_noise = self.build_masking_matrix_add_noise(encoder_inputs, self.lower_body_joints)
+        decoder_noise = self.build_noise_matrix(decoder_inputs, self.lower_body_joints)
+        encoder_noise = self.build_noise_matrix(encoder_inputs, self.lower_body_joints)
         
         #mask encoder inputs and decoder inputs
         encoder_inputs = np.multiply(self.M_enc_in, encoder_inputs)
